@@ -1,52 +1,67 @@
 #include <jni.h>
 #include <string>
 #include <cmath>
-#include <sstream>
 #include <thread>
 #include <chrono>
 
-jstring solveQuadratic(JNIEnv* env, jobject thiz, jdouble a, jdouble b, jdouble c) {
+
+extern "C" {
+
+jdoubleArray solveQuadratic(JNIEnv* env, jobject thiz, jdouble a, jdouble b, jdouble c) {
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    std::stringstream result;
+
+    double status = 1;
+    double x1 = 0.0;
+    double x2 = 0.0;
+
     if (a == 0) {
         if (b == 0) {
-            result << (c == 0 ? "Phương trình vô số nghiệm" : "Phương trình vô nghiệm");
+            status = (c == 0) ? 0 : 1; 
         } else {
-            double x = -c / b;
-            result << "Phương trình bậc 1 có 1 nghiệm:\nx = " << x;
+            status = 2.0;
+            x1 = -c / b;
         }
     } else {
         double delta = b * b - 4 * a * c;
         if (delta < 0) {
-            result << "Phương trình vô nghiệm (Delta < 0)";
+            status = 1;
         } else if (delta == 0) {
-            double x = -b / (2 * a);
-            result << "Phương trình có nghiệm kép:\nx1 = x2 = " << x;
+            status = 3;
+            x1 = -b / (2 * a);
+            x2 = x1;
         } else {
-            double x1 = (-b + std::sqrt(delta)) / (2 * a);
-            double x2 = (-b - std::sqrt(delta)) / (2 * a);
-            result << "Phương trình có 2 nghiệm phân biệt:\nx1 = " << x1 << "\nx2 = " << x2;
+            status = 4;
+            x1 = (-b + std::sqrt(delta)) / (2 * a);
+            x2 = (-b - std::sqrt(delta)) / (2 * a);
         }
     }
 
-    return env->NewStringUTF(result.str().c_str());
+    jdoubleArray result = env->NewDoubleArray(3);
+    if (result == nullptr) {
+        return nullptr;
+    }
+
+    jdouble buf[3] = { status, x1, x2 };
+    env->SetDoubleArrayRegion(result, 0, 3, buf);
+
+    return result;
 }
 
 static JNINativeMethod methods[] = {
     {
-            "solveQuadraticFromNative",
-            "(DDD)Ljava/lang/String;",
-            (void*)solveQuadratic
+        "solveQuadraticFromNative",
+        "(DDD)[D",
+        (void*)solveQuadratic
     }
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    JNIEnv* env;
+    JNIEnv* env = nullptr;
     if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR;
     }
 
-    jclass clazz = env->FindClass("com/example/quadraticsolver/MainActivity");
+    jclass clazz = env->FindClass("com/example/quadraticsolver/QuadraticNativeLib");
     if (clazz == nullptr) {
         return JNI_ERR;
     }
@@ -56,4 +71,6 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     }
 
     return JNI_VERSION_1_6;
+}
+
 }

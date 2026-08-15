@@ -30,8 +30,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.quadraticsolver.ui.theme.QuadraticSolverTheme
@@ -41,8 +41,6 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
-    private external fun solveQuadraticFromNative(a: Double, b: Double, c: Double): String
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -51,30 +49,24 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     QuadraticSolverScreen(
                         onSolve = { a, b, c ->
-                            withContext(Dispatchers.IO){
-                                solveQuadraticFromNative(a, b, c)}
-                            },
+                            withContext(Dispatchers.IO) {
+                                QuadraticNativeLib.solveQuadratic(a, b, c)
+                            }
+                        },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
             }
         }
     }
-    companion object {
-        init {
-            System.loadLibrary("quadraticsolver")
-        }
-    }
 }
 
-
-
 @Composable
-fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, modifier: Modifier = Modifier) {
+fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> QuadraticResult, modifier: Modifier = Modifier) {
     var aText by remember { mutableStateOf("") }
     var bText by remember { mutableStateOf("") }
     var cText by remember { mutableStateOf("") }
-    var resultText by remember { mutableStateOf("") }
+    var resultObj by remember { mutableStateOf<QuadraticResult?>(null) }
 
     var isLoading by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -122,11 +114,11 @@ fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, m
                 val c = cText.toDoubleOrNull() ?: 0.0
 
                 isLoading = true
-                resultText = ""
+                resultObj = null
 
                 scope.launch {
-                    resultText = onSolve(a, b, c)
-                    isLoading=false
+                    resultObj = onSolve(a, b, c)
+                    isLoading = false
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -136,7 +128,6 @@ fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, m
         }
 
         if (isLoading) {
-            // 1. Hiển thị Card Loading khi đang tính toán
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -163,20 +154,27 @@ fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, m
                     )
                 }
             }
-        } else if (resultText.isNotEmpty()) {
+        } else if (resultObj != null) {
+            val res = resultObj!!
+            val displayMessage = when (res.rootType) {
+                RootType.INFINITE_ROOTS -> stringResource(R.string.result_infinite_roots)
+                RootType.NO_REAL_ROOTS -> stringResource(R.string.result_no_real_roots)
+                RootType.ONE_REAL_ROOT -> stringResource(R.string.result_one_real_root, res.x1)
+                RootType.DOUBLE_ROOT -> stringResource(R.string.result_double_root, res.x1)
+                RootType.TWO_REAL_ROOTS -> stringResource(R.string.result_two_real_roots, res.x1, res.x2)
+            }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
             ) {
                 Text(
-                    text = resultText,
+                    text = displayMessage,
                     fontSize = 18.sp,
                     modifier = Modifier.padding(16.dp)
                 )
             }
         }
-
-
     }
 }
