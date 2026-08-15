@@ -38,10 +38,12 @@ import com.example.quadraticsolver.ui.theme.QuadraticSolverTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
+import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
 
-    private external fun solveQuadraticFromNative(a: Double, b: Double, c: Double): String
+    private external fun solveQuadraticFromNative(a: Double, b: Double, c: Double): DoubleArray
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,23 +53,55 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     QuadraticSolverScreen(
                         onSolve = { a, b, c ->
-                            withContext(Dispatchers.IO){
-                                solveQuadraticFromNative(a, b, c)}
-                            },
+                            withContext(Dispatchers.IO) {
+                                val roots = solveQuadraticFromNative(a, b, c)
+                                formatResult(a, b, c, roots)
+                            }
+                        },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
             }
         }
     }
+
+    private fun formatResult(a: Double, b: Double, c: Double, roots: DoubleArray): String {
+        val eps = 1e-9
+        fun formatNumber(value: Double): String {
+            return if (abs(value - value.toLong()) < eps) {
+                value.toLong().toString()
+            } else {
+                String.format(Locale.US, "%.4f", value).trimEnd('0').trimEnd('.')
+            }
+        }
+
+        return when {
+            roots.size == 1 && roots[0].isInfinite() -> {
+                "Phương trình vô số nghiệm."
+            }
+            roots.isEmpty() -> {
+                "Phương trình vô nghiệm."
+            }
+            roots.size == 1 -> {
+                if (abs(a) < eps) {
+                    "Phương trình có 1 nghiệm:\nx = ${formatNumber(roots[0])}"
+                } else {
+                    "Phương trình có nghiệm kép:\nx₁ = x₂ = ${formatNumber(roots[0])}"
+                }
+            }
+            roots.size == 2 -> {
+                "Phương trình có 2 nghiệm phân biệt:\nx₁ = ${formatNumber(roots[0])}\nx₂ = ${formatNumber(roots[1])}"
+            }
+            else -> "Không xác định được nghiệm."
+        }
+    }
+
     companion object {
         init {
             System.loadLibrary("quadraticsolver")
         }
     }
 }
-
-
 
 @Composable
 fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, modifier: Modifier = Modifier) {
@@ -126,7 +160,7 @@ fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, m
 
                 scope.launch {
                     resultText = onSolve(a, b, c)
-                    isLoading=false
+                    isLoading = false
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -136,7 +170,6 @@ fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, m
         }
 
         if (isLoading) {
-            // 1. Hiển thị Card Loading khi đang tính toán
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -176,7 +209,5 @@ fun QuadraticSolverScreen(onSolve: suspend (Double, Double, Double) -> String, m
                 )
             }
         }
-
-
     }
 }
