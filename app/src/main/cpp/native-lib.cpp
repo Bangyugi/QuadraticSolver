@@ -16,7 +16,7 @@ Java_com_example_quadraticsolver_MainActivity_solveQuadraticFromNative(
 
     if (std::abs(a) < EPS) {
         if (std::abs(b) < EPS) {
-            if (std::abs(c) < EPS) 
+            if (std::abs(c) < EPS) {
                 roots.push_back(std::numeric_limits<double>::infinity());
             }
         } else {
