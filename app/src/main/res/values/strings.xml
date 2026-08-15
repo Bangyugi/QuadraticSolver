@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">QuadraticSolver</string>
+    <string name="result_infinite_roots">Phương trình vô số nghiệm</string>
+    <string name="result_no_real_roots">Phương trình vô nghiệm (Delta &lt; 0)</string>
+    <string name="result_one_real_root">Phương trình bậc 1 có 1 nghiệm:\nx = %1$.2f</string>
+    <string name="result_double_root">Phương trình có nghiệm kép:\nx1 = x2 = %1$.2f</string>
+    <string name="result_two_real_roots">Phương trình có 2 nghiệm phân biệt:\nx1 = %1$.2f\nx2 = %2$.2f</string>
 </resources>
